@@ -198,8 +198,6 @@
 	// Setup interactivity
 	interactivity({
 		compute: (event, state) => {
-			if (isAnimating) return; // Don't process hover while animating
-
 			// Update mouse position
 			mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
 			mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
