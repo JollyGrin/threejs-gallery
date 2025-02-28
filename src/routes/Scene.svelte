@@ -9,7 +9,8 @@
 		PerspectiveCamera,
 		Mesh,
 		TextureLoader,
-		Texture
+		Texture,
+		ShaderMaterial
 	} from 'three';
 
 	interactivity();
@@ -23,8 +24,10 @@
 	const imageSize = 400; // Size for Picsum images
 	const baseRenderOrder = 0;
 	const hoveredRenderOrder = 1;
-	const animationDelay = 75; // ms delay between each item's animation
-	const springConfig = { stiffness: 0.05, damping: 0.7 };
+	const animationDelay = 60; // ms delay between each item's animation
+	const springConfig = { stiffness: 0.1, damping: 0.9 };
+	const maxSaturation = 1; // Full color
+	const minSaturation = 0; // Grayscale
 
 	// State
 	let mousePosition: Vector2 = new Vector2();
@@ -146,18 +149,55 @@
 		return 1 + (maxHoverScale - 1) * Math.pow(normalizedDistance, 2); // Quadratic falloff for smoother effect
 	}
 
-	// Update mesh render order
-	function updateMeshRenderOrder(mesh: Mesh | undefined, order: number) {
+	// Calculate saturation based on distance
+	function getSaturationFromDistance(distance: number): number {
+		const normalizedDistance = Math.max(0, 1 - distance / hoverRadius);
+		const saturationValue = normalizedDistance * normalizedDistance; // Quadratic falloff
+		return MathUtils.lerp(minSaturation, maxSaturation, saturationValue);
+	}
+
+	// Custom shader for grayscale and color transition
+	const customShader = {
+		uniforms: {
+			map: { value: null },
+			saturation: { value: 0.0 }
+		},
+		vertexShader: `
+			varying vec2 vUv;
+			void main() {
+				vUv = uv;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			}
+		`,
+		fragmentShader: `
+			uniform sampler2D map;
+			uniform float saturation;
+			varying vec2 vUv;
+
+			void main() {
+				vec4 texColor = texture2D(map, vUv);
+				float gray = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+				vec3 grayColor = vec3(gray);
+				vec3 finalColor = mix(grayColor, texColor.rgb, saturation);
+				gl_FragColor = vec4(finalColor, texColor.a);
+			}
+		`
+	};
+
+	// Update mesh effects (scale, render order, and saturation)
+	function updateMeshEffects(mesh: Mesh | undefined, order: number, saturation: number) {
 		if (mesh) {
 			mesh.renderOrder = order;
+			const material = mesh.material as ShaderMaterial;
+			if (material.uniforms) {
+				material.uniforms.saturation.value = saturation;
+			}
 		}
 	}
 
 	// Setup interactivity
 	interactivity({
 		compute: (event, state) => {
-			if (isAnimating) return; // Don't process hover while animating
-
 			// Update mouse position
 			mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
 			mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -177,37 +217,44 @@
 					const point = intersection.point;
 					const hoveredMesh = intersection.object as Mesh;
 
-					// Update scales and render orders based on distance to intersection point
+					// Update scales and effects based on distance to intersection point
 					planes.forEach((plane) => {
 						const distance = plane.vec3Position.distanceTo(point);
 						const targetScale = getScaleFromDistance(distance);
+						const targetSaturation = getSaturationFromDistance(distance);
 						plane.scale = MathUtils.lerp(plane.scale, targetScale, lerpFactor);
 
-						// Update render order based on scale
+						// Update effects based on scale
 						if (plane.scale > 1.1) {
-							updateMeshRenderOrder(plane.mesh, hoveredRenderOrder);
+							updateMeshEffects(plane.mesh, hoveredRenderOrder, targetSaturation);
 						} else {
-							updateMeshRenderOrder(plane.mesh, baseRenderOrder);
+							updateMeshEffects(plane.mesh, baseRenderOrder, minSaturation);
 						}
 					});
 
-					// Ensure the directly hovered mesh is always on top
-					updateMeshRenderOrder(hoveredMesh, hoveredRenderOrder + 1);
+					// Ensure the directly hovered mesh is always on top with full saturation
+					updateMeshEffects(hoveredMesh, hoveredRenderOrder + 1, maxSaturation);
 				} else {
-					// Reset all render orders when not hovering
+					// Reset all effects when not hovering
 					planes.forEach((plane) => {
 						plane.scale = MathUtils.lerp(plane.scale, 1, lerpFactor);
-						updateMeshRenderOrder(plane.mesh, baseRenderOrder);
+						updateMeshEffects(plane.mesh, baseRenderOrder, minSaturation);
 					});
 				}
 			}
 		}
 	});
 
-	// Store mesh references when created
+	// Store mesh references and setup material when created
 	function handleMeshCreated(mesh: Mesh, index: number) {
 		planes[index].mesh = mesh;
 		mesh.renderOrder = baseRenderOrder;
+
+		// Set the texture in the shader uniforms
+		const material = mesh.material as ShaderMaterial;
+		if (material.uniforms && planes[index].texture) {
+			material.uniforms.map.value = planes[index].texture;
+		}
 	}
 
 	// Store camera reference when created
@@ -237,7 +284,17 @@
 	>
 		<T.Mesh oncreate={(mesh) => handleMeshCreated(mesh, i)}>
 			<T.PlaneGeometry args={[1, 1]} />
-			<T.MeshStandardMaterial map={plane.texture} side={2} transparent={true} depthWrite={false} />
+			<T.ShaderMaterial
+				transparent={true}
+				depthWrite={false}
+				side={2}
+				uniforms={{
+					map: { value: plane.texture },
+					saturation: { value: 0.0 }
+				}}
+				vertexShader={customShader.vertexShader}
+				fragmentShader={customShader.fragmentShader}
+			/>
 		</T.Mesh>
 	</T.Group>
 {/each}
