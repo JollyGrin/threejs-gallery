@@ -9,8 +9,9 @@ An interactive 3D image gallery built with Svelte, Threlte, and Three.js. Featur
 - 🖼️ Dynamic grid of images with configurable size
 - 🎯 Interactive hover effects with distance-based scaling
 - 🌊 Smooth spring-based animations
+- 🎨 Color effects (grayscale to color on hover)
 - 📸 Random images from Lorem Picsum
-- 🎨 Modern, minimalist UI
+- 💫 Modern, minimalist UI
 
 ## Configuration
 
@@ -19,23 +20,39 @@ The gallery is highly configurable. Here are the main parameters you can adjust 
 ```typescript
 // Grid Layout
 const gridSize = { rows: 13, cols: 14 };  // Adjust grid dimensions
-const spacing = 1.2;                      // Space between images
+const spacing = 1.5;                      // Space between images
 
 // Hover Effects
 const maxHoverScale = 3;                  // Maximum scale on hover
-const hoverRadius = spacing * 2;          // How far the hover effect spreads
+const hoverRadius = spacing * 2;          // How far the effect spreads
 const lerpFactor = 0.15;                  // Hover animation smoothness
 
 // Animation
-const animationDelay = 75;                // Delay between each image animation (ms)
+const animationDelay = 60;                // Delay between each image animation (ms)
 const springConfig = {                    // Spring physics configuration
-  stiffness: 0.05,                       // Lower = more bouncy
-  damping: 0.7                           // Higher = less oscillation
+  stiffness: 0.1,                        // Lower = more bouncy
+  damping: 0.9                           // Higher = less oscillation
 };
+
+// Color Effects
+const maxSaturation = 1;                  // Full color when hovered
+const minSaturation = 0;                  // Grayscale when not hovered
 
 // Image Settings
 const imageSize = 400;                    // Size of loaded images (px)
 ```
+
+## Effects
+
+### Hover Effects
+- Scale: Images scale up when hovered, with a smooth falloff based on distance
+- Color: Images transition from grayscale to full color on hover
+- Both effects use distance-based interpolation for smooth transitions
+
+### Animation
+- Images animate out from the center using spring physics
+- Sequential animation creates a wave-like effect
+- Configurable spring physics for different movement styles
 
 ## Development
 
