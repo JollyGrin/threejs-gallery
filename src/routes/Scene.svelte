@@ -1,7 +1,16 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
 	import { interactivity } from '@threlte/extras';
-	import { Vector3, MathUtils, Vector2, Raycaster, PerspectiveCamera, Mesh, TextureLoader } from 'three';
+	import {
+		Vector3,
+		MathUtils,
+		Vector2,
+		Raycaster,
+		PerspectiveCamera,
+		Mesh,
+		TextureLoader,
+		Texture
+	} from 'three';
 
 	interactivity();
 
@@ -12,6 +21,8 @@
 	const hoverRadius = spacing * 2; // How far the effect spreads
 	const lerpFactor = 0.15; // Increased for more responsive movement
 	const imageSize = 400; // Size for Picsum images
+	const baseRenderOrder = 0;
+	const hoveredRenderOrder = 1;
 
 	// State
 	let hoveredIndex = -1;
@@ -27,9 +38,10 @@
 		position: number[];
 		rotation: number[];
 		scale: number;
+		renderOrder: number;
 		vec3Position: Vector3;
 		mesh?: Mesh;
-		texture?: THREE.Texture;
+		texture?: Texture;
 	}[] = $state([]);
 
 	// Load textures and create planes
@@ -50,6 +62,7 @@
 				position,
 				rotation: [-Math.PI / 2, 0, 0],
 				scale: 1,
+				renderOrder: baseRenderOrder,
 				vec3Position: new Vector3(...position),
 				texture
 			});
@@ -60,6 +73,13 @@
 	function getScaleFromDistance(distance: number): number {
 		const normalizedDistance = Math.max(0, 1 - distance / hoverRadius);
 		return 1 + (maxHoverScale - 1) * Math.pow(normalizedDistance, 2); // Quadratic falloff for smoother effect
+	}
+
+	// Update mesh render order
+	function updateMeshRenderOrder(mesh: Mesh | undefined, order: number) {
+		if (mesh) {
+			mesh.renderOrder = order;
+		}
 	}
 
 	// Setup interactivity
@@ -82,17 +102,29 @@
 				if (intersects.length > 0) {
 					const intersection = intersects[0];
 					const point = intersection.point;
+					const hoveredMesh = intersection.object as Mesh;
 
-					// Update scales based on distance to intersection point
+					// Update scales and render orders based on distance to intersection point
 					planes.forEach((plane) => {
 						const distance = plane.vec3Position.distanceTo(point);
 						const targetScale = getScaleFromDistance(distance);
 						plane.scale = MathUtils.lerp(plane.scale, targetScale, lerpFactor);
+
+						// Update render order based on scale
+						if (plane.scale > 1.1) {
+							updateMeshRenderOrder(plane.mesh, hoveredRenderOrder);
+						} else {
+							updateMeshRenderOrder(plane.mesh, baseRenderOrder);
+						}
 					});
+
+					// Ensure the directly hovered mesh is always on top
+					updateMeshRenderOrder(hoveredMesh, hoveredRenderOrder + 1);
 				} else {
-					// When not hovering over any plane, return all to normal scale
+					// Reset all render orders when not hovering
 					planes.forEach((plane) => {
 						plane.scale = MathUtils.lerp(plane.scale, 1, lerpFactor);
+						updateMeshRenderOrder(plane.mesh, baseRenderOrder);
 					});
 				}
 			}
@@ -102,6 +134,7 @@
 	// Store mesh references when created
 	function handleMeshCreated(mesh: Mesh, index: number) {
 		planes[index].mesh = mesh;
+		mesh.renderOrder = baseRenderOrder;
 	}
 
 	// Store camera reference when created
@@ -131,10 +164,7 @@
 	>
 		<T.Mesh oncreate={(mesh) => handleMeshCreated(mesh, i)}>
 			<T.PlaneGeometry args={[1, 1]} />
-			<T.MeshStandardMaterial 
-				map={plane.texture} 
-				side={2}
-			/>
+			<T.MeshStandardMaterial map={plane.texture} side={2} transparent={true} depthWrite={false} />
 		</T.Mesh>
 	</T.Group>
 {/each}
