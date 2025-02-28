@@ -6,7 +6,7 @@
 	interactivity();
 
 	// Configuration
-	const gridSize = { rows: 4, cols: 4 };
+	const gridSize = { rows: 7, cols: 7 };
 	const spacing = 2;
 	const maxHoverScale = 1.5;
 	const hoverRadius = spacing * 2; // How far the effect spreads
@@ -18,14 +18,14 @@
 	let camera: PerspectiveCamera;
 
 	// Generate grid positions
-	const planes: {
+	let planes: {
 		id: number;
 		position: number[];
 		rotation: number[];
 		scale: number;
 		vec3Position: Vector3;
 		mesh?: Mesh;
-	}[] = [];
+	}[] = $state([]);
 
 	for (let row = 0; row < gridSize.rows; row++) {
 		for (let col = 0; col < gridSize.cols; col++) {
@@ -63,12 +63,11 @@
 				state.raycaster.setFromCamera(mousePosition, camera);
 
 				// Filter out undefined meshes and cast to Object3D[]
-				const meshes = planes
-					.map((p) => p.mesh)
-					.filter((mesh): mesh is Object3D => mesh !== undefined);
+				const meshes = planes.map((p) => p.mesh).filter((mesh): mesh is Mesh => mesh !== undefined);
 
 				// Find intersections with all planes
 				const intersects = state.raycaster.intersectObjects(meshes);
+				console.log(intersects);
 
 				if (intersects.length > 0) {
 					const intersection = intersects[0];
