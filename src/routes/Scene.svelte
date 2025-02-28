@@ -7,8 +7,8 @@
 
 	// Configuration
 	const gridSize = { rows: 7, cols: 7 };
-	const spacing = 2;
-	const maxHoverScale = 1.5;
+	const spacing = 1.2;
+	const maxHoverScale = 3;
 	const hoverRadius = spacing * 2; // How far the effect spreads
 	const lerpFactor = 0.15; // Increased for more responsive movement
 
