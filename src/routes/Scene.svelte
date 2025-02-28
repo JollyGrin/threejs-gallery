@@ -6,7 +6,6 @@
 		Vector3,
 		MathUtils,
 		Vector2,
-		Raycaster,
 		PerspectiveCamera,
 		Mesh,
 		TextureLoader,
@@ -16,7 +15,7 @@
 	interactivity();
 
 	// Configuration
-	const gridSize = { rows: 7, cols: 7 };
+	const gridSize = { rows: 13, cols: 14 };
 	const spacing = 1.2;
 	const maxHoverScale = 3;
 	const hoverRadius = spacing * 2; // How far the effect spreads
@@ -24,11 +23,10 @@
 	const imageSize = 400; // Size for Picsum images
 	const baseRenderOrder = 0;
 	const hoveredRenderOrder = 1;
-	const animationDelay = 50; // ms delay between each item's animation
-	const springConfig = { stiffness: 0.3, damping: 0.7 };
+	const animationDelay = 75; // ms delay between each item's animation
+	const springConfig = { stiffness: 0.05, damping: 0.7 };
 
 	// State
-	let hoveredIndex = -1;
 	let mousePosition: Vector2 = new Vector2();
 	let camera: PerspectiveCamera;
 	let isAnimating = true;
@@ -63,7 +61,8 @@
 			const targetZ = row * spacing - centerOffsetZ;
 
 			// Calculate animation order (distance from center)
-			const distanceFromCenter = Math.abs(col - (gridSize.cols - 1) / 2) + Math.abs(row - (gridSize.rows - 1) / 2);
+			const distanceFromCenter =
+				Math.abs(col - (gridSize.cols - 1) / 2) + Math.abs(row - (gridSize.rows - 1) / 2);
 
 			const position = [0, 0, 0]; // Start at center
 			const targetPosition = new Vector3(targetX, 0, targetZ);
@@ -107,16 +106,16 @@
 			const delay = plane.animationOrder * animationDelay;
 			if (elapsed > delay) {
 				// First move X
-				plane.spring.set({ 
+				plane.spring.set({
 					x: plane.targetPosition.x,
-					z: plane.spring.current.z 
+					z: plane.spring.current.z
 				});
 
 				// Then move Z after X is mostly done
 				if (Math.abs(plane.spring.current.x - plane.targetPosition.x) < 0.1) {
-					plane.spring.set({ 
+					plane.spring.set({
 						x: plane.targetPosition.x,
-						z: plane.targetPosition.z 
+						z: plane.targetPosition.z
 					});
 				}
 
