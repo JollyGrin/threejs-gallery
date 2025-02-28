@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { T, useTask, useThrelte } from '@threlte/core';
+	import { T, useTask } from '@threlte/core';
 	import { interactivity } from '@threlte/extras';
 	import { Spring } from 'svelte/motion';
 	import {
@@ -16,7 +16,7 @@
 
 	// Configuration
 	const gridSize = { rows: 13, cols: 14 };
-	const spacing = 1.2;
+	const spacing = 1.5;
 	const maxHoverScale = 3;
 	const hoverRadius = spacing * 2; // How far the effect spreads
 	const lerpFactor = 0.15; // Increased for more responsive movement
