@@ -10,9 +10,7 @@
 		Mesh,
 		TextureLoader,
 		Texture,
-		Color,
-		MeshStandardMaterial,
-		type HSL
+		ShaderMaterial
 	} from 'three';
 
 	interactivity();
@@ -28,8 +26,8 @@
 	const hoveredRenderOrder = 1;
 	const animationDelay = 60; // ms delay between each item's animation
 	const springConfig = { stiffness: 0.1, damping: 0.9 };
-	const maxSaturation = 2; // 110% saturation at max
-	const minSaturation = 0.0; // Grayscale when not hovering
+	const maxSaturation = 1; // Full color
+	const minSaturation = 0; // Grayscale
 
 	// State
 	let mousePosition: Vector2 = new Vector2();
@@ -158,29 +156,41 @@
 		return MathUtils.lerp(minSaturation, maxSaturation, saturationValue);
 	}
 
-	// Update mesh render order
-	function updateMeshRenderOrder(mesh: Mesh | undefined, order: number) {
-		if (mesh) {
-			mesh.renderOrder = order;
-		}
-	}
+	// Custom shader for grayscale and color transition
+	const customShader = {
+		uniforms: {
+			map: { value: null },
+			saturation: { value: 0.0 }
+		},
+		vertexShader: `
+			varying vec2 vUv;
+			void main() {
+				vUv = uv;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			}
+		`,
+		fragmentShader: `
+			uniform sampler2D map;
+			uniform float saturation;
+			varying vec2 vUv;
+
+			void main() {
+				vec4 texColor = texture2D(map, vUv);
+				float gray = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+				vec3 grayColor = vec3(gray);
+				vec3 finalColor = mix(grayColor, texColor.rgb, saturation);
+				gl_FragColor = vec4(finalColor, texColor.a);
+			}
+		`
+	};
 
 	// Update mesh effects (scale, render order, and saturation)
 	function updateMeshEffects(mesh: Mesh | undefined, order: number, saturation: number) {
 		if (mesh) {
 			mesh.renderOrder = order;
-			const material = mesh.material as MeshStandardMaterial;
-			if (material.color) {
-				let hsl: HSL = { h: 0, s: 0, l: 0 };
-				material.color.getHSL(hsl);
-				
-				// When saturation is 0, increase brightness slightly to compensate
-				const luminance = saturation === 0 ? 0.5 : 0.4;
-				material.color.setHSL(hsl.h, saturation, luminance);
-				
-				// Adjust material properties for better grayscale appearance
-				material.metalness = saturation === 0 ? 0.5 : 0;
-				material.roughness = saturation === 0 ? 0.8 : 0.5;
+			const material = mesh.material as ShaderMaterial;
+			if (material.uniforms) {
+				material.uniforms.saturation.value = saturation;
 			}
 		}
 	}
@@ -237,10 +247,16 @@
 		}
 	});
 
-	// Store mesh references when created
+	// Store mesh references and setup material when created
 	function handleMeshCreated(mesh: Mesh, index: number) {
 		planes[index].mesh = mesh;
 		mesh.renderOrder = baseRenderOrder;
+
+		// Set the texture in the shader uniforms
+		const material = mesh.material as ShaderMaterial;
+		if (material.uniforms && planes[index].texture) {
+			material.uniforms.map.value = planes[index].texture;
+		}
 	}
 
 	// Store camera reference when created
@@ -270,14 +286,16 @@
 	>
 		<T.Mesh oncreate={(mesh) => handleMeshCreated(mesh, i)}>
 			<T.PlaneGeometry args={[1, 1]} />
-			<T.MeshStandardMaterial
-				map={plane.texture}
-				side={0}
+			<T.ShaderMaterial
 				transparent={true}
 				depthWrite={false}
-				color={new Color(1, 1, 1)}
-				metalness={0.5}
-				roughness={0.8}
+				side={2}
+				uniforms={{
+					map: { value: plane.texture },
+					saturation: { value: 0.0 }
+				}}
+				vertexShader={customShader.vertexShader}
+				fragmentShader={customShader.fragmentShader}
 			/>
 		</T.Mesh>
 	</T.Group>
