@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
 	import { interactivity } from '@threlte/extras';
-	import { Vector3, MathUtils, Vector2, Raycaster, PerspectiveCamera, Mesh, Object3D } from 'three';
+	import { Vector3, MathUtils, Vector2, Raycaster, PerspectiveCamera, Mesh, TextureLoader } from 'three';
 
 	interactivity();
 
@@ -11,11 +11,15 @@
 	const maxHoverScale = 3;
 	const hoverRadius = spacing * 2; // How far the effect spreads
 	const lerpFactor = 0.15; // Increased for more responsive movement
+	const imageSize = 400; // Size for Picsum images
 
 	// State
 	let hoveredIndex = -1;
 	let mousePosition: Vector2 = new Vector2();
 	let camera: PerspectiveCamera;
+
+	// Setup texture loader
+	const textureLoader = new TextureLoader();
 
 	// Generate grid positions
 	let planes: {
@@ -25,8 +29,10 @@
 		scale: number;
 		vec3Position: Vector3;
 		mesh?: Mesh;
+		texture?: THREE.Texture;
 	}[] = $state([]);
 
+	// Load textures and create planes
 	for (let row = 0; row < gridSize.rows; row++) {
 		for (let col = 0; col < gridSize.cols; col++) {
 			const index = row * gridSize.cols + col;
@@ -35,12 +41,17 @@
 
 			const position = [col * spacing - centerOffsetX, 0, row * spacing - centerOffsetZ];
 
+			// Load texture for this plane
+			const imageUrl = `https://picsum.photos/seed/${index}/${imageSize}/${imageSize}`;
+			const texture = textureLoader.load(imageUrl);
+
 			planes.push({
 				id: index,
 				position,
 				rotation: [-Math.PI / 2, 0, 0],
 				scale: 1,
-				vec3Position: new Vector3(...position)
+				vec3Position: new Vector3(...position),
+				texture
 			});
 		}
 	}
@@ -67,7 +78,6 @@
 
 				// Find intersections with all planes
 				const intersects = state.raycaster.intersectObjects(meshes);
-				console.log(intersects);
 
 				if (intersects.length > 0) {
 					const intersection = intersects[0];
@@ -121,7 +131,10 @@
 	>
 		<T.Mesh oncreate={(mesh) => handleMeshCreated(mesh, i)}>
 			<T.PlaneGeometry args={[1, 1]} />
-			<T.MeshStandardMaterial color="#666666" side={2} />
+			<T.MeshStandardMaterial 
+				map={plane.texture} 
+				side={2}
+			/>
 		</T.Mesh>
 	</T.Group>
 {/each}
