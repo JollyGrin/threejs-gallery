@@ -1,5 +1,7 @@
 # Interactive 3D Image Gallery
 
+https://github.com/user-attachments/assets/e78938ba-e822-4ac0-af3e-d73dbf5ba6ef
+
 An interactive 3D image gallery built with Svelte, Threlte, and Three.js. Features a dynamic grid of images with spring-based animations and hover effects.
 
 ![Interactive 3D Gallery Demo](demo.gif)
